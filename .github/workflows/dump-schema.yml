@@ -7,7 +7,7 @@ jobs:
   dump:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (optional)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install PostgreSQL client
@@ -15,17 +15,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      # Secret'ı env olarak veriyoruz ve sslmode'u "require" ile garanti altına alıyoruz
       - name: Dump schema (public, auth, storage)
-  run: |
-    mkdir -p supabase_summary
-    DB_URL='${{ secrets.SUPABASE_DB_URL }}'
-    # Windows CR ve son satır sonunu kes:
-    DB_URL="${DB_URL%%[$'\r\n']*}"
-    pg_dump "$DB_URL" \
-      -s -n public -n auth -n storage \
-      --no-owner --no-privileges \
-      -f supabase_summary/schema.sql
-    head -n 40 supabase_summary/schema.sql || true
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}   # örn: postgres://postgres:***@db.PROJECT-REF.supabase.co:5432/postgres
+          PGSSLMODE: require                       # <- "invalid sslmode: require\n" hatasını burada engelliyoruz
+        run: |
+          # Secret sonunda CR/LF varsa kırp (fazladan güvenlik)
+          DB_URL="${DB_URL%%[$'\r\n']*}"
+          mkdir -p supabase_summary
+          pg_dump "$DB_URL" \
+            -s -n public -n auth -n storage \
+            --no-owner --no-privileges \
+            -f supabase_summary/schema.sql
+          head -n 40 supabase_summary/schema.sql || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
