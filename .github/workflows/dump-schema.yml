@@ -16,15 +16,16 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: Dump schema (public, auth, storage)
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          mkdir -p supabase_summary
-          pg_dump "$DB_URL" \
-            -s -n public -n auth -n storage \
-            --no-owner --no-privileges \
-            -f supabase_summary/schema.sql
-          head -n 40 supabase_summary/schema.sql || true
+  run: |
+    mkdir -p supabase_summary
+    DB_URL='${{ secrets.SUPABASE_DB_URL }}'
+    # Windows CR ve son satır sonunu kes:
+    DB_URL="${DB_URL%%[$'\r\n']*}"
+    pg_dump "$DB_URL" \
+      -s -n public -n auth -n storage \
+      --no-owner --no-privileges \
+      -f supabase_summary/schema.sql
+    head -n 40 supabase_summary/schema.sql || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
